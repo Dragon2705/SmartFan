@@ -38,4 +38,5 @@ Hệ thống này tích hợp các công nghệ nhúng và IoT, sử dụng:
 
 * **Giao tiếp UART:** Để truyền nhận lệnh điều khiển.
 * **ADC:** Để đọc dữ liệu cảm biến nhiệt độ.
+* * **Bluetooth:** Để chuyền dữ liệu từ IoTNode đến Gateway.
 * **Giao diện Web:** Để giám sát và điều khiển từ xa.
