@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Smart Fan Control Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 25px;
+      margin: 0;
+      background: #1e88e5;
+      color: white;
+      font-size: 1.8rem;
+    }
+
+    #loginForm, #dashboard {
+      max-width: 600px;
+      margin: 30px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: #1e88e5;
+      color: white;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    .status-box {
+      display: flex;
+      justify-content: space-between;
+      padding: 15px;
+      border-radius: 10px;
+      background: #eef2f7;
+      margin: 10px 0;
+    }
+
+    .danger {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+
+    .good {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    /* Switch styles */
+    .switch-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #1e88e5;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Smart Fan Control Dashboard</h1>
+
+<!-- Login -->
+<div id="loginForm">
+  <input type="email" id="email" placeholder="Enter Email" />
+  <input type="password" id="password" placeholder="Enter Password" />
+  <button id="loginBtn">Login</button>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" style="display:none;">
+
+  <h2>Fan Controls</h2>
+
+  <div class="switch-container">
+    <span>Power Control</span>
+    <label class="switch">
+      <input type="checkbox" id="powerSwitch">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="switch-container">
+    <span>Auto Mode</span>
+    <label class="switch">
+      <input type="checkbox" id="modeSwitch">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <select id="levelSelect">
+    <option value="0">Level 1</option>
+    <option value="1">Level 2</option>
+    <option value="2">Level 3</option>
+  </select>
+
+  <button id="applyLevelBtn">Set Level</button>
+  <button id="reqStatusBtn" style="background:#1565c0;">Request Status</button>
+  <button id="logoutBtn" style="background:#555;">Logout</button>
+
+  <h2>Real-time Status</h2>
+
+  <div class="status-box">
+    <span>Power:</span>
+    <b id="powerState">--</b>
+  </div>
+
+  <div class="status-box">
+    <span>Mode:</span>
+    <b id="modeState">--</b>
+  </div>
+
+  <div class="status-box">
+    <span>Level:</span>
+    <b id="levelState">--</b>
+  </div>
+
+  <div class="status-box">
+    <span>Temperature:</span>
+    <b id="tempState">-- °C</b>
+  </div>
+
+  <div class="status-box good" id="ackBox">
+    <span>ACK Code:</span>
+    <b id="ackCode">--</b>
+  </div>
+
+  <div class="status-box danger" id="errorBox">
+    <span>Error Code:</span>
+    <b id="errCode">--</b>
+  </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
+<script>
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyDE2YgJ_-kNWNmzI_8CMvBTRS3SV7V2Z0c",
+  authDomain: "smartfan-e2acf.firebaseapp.com",
+  databaseURL: "https://smartfan-e2acf-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "smartfan-e2acf",
+  storageBucket: "smartfan-e2acf.firebasestorage.app",
+  messagingSenderId: "207587588034",
+  appId: "1:207587588034:web:8ba6a2ed2337ad23b5c85b",
+};
+
+firebase.initializeApp(firebaseConfig);
+
+// Allowed login
+const allowedEmail = "Longnv.275@gmail.com";
+const allowedPassword = "abcd1234";
+
+// UI elements
+const loginForm = document.getElementById("loginForm");
+const dashboard = document.getElementById("dashboard");
+
+// Timer for auto status request
+let statusRequestTimer = null;
+
+function startStatusTimer() {
+  // Clear any existing timer to avoid duplicates
+  if (statusRequestTimer) {
+    clearInterval(statusRequestTimer);
+  }
+  // Set a new timer to send "req_status" every 2 seconds
+  statusRequestTimer = setInterval(() => {
+    sendCmd("req_status", 0, true); // Pass true to indicate it's an auto-request
+  }, 2000);
+}
+
+function stopStatusTimer() {
+  if (statusRequestTimer) {
+    clearInterval(statusRequestTimer);
+  }
+}
+
+// Login
+document.getElementById("loginBtn").onclick = () => {
+  let email = document.getElementById("email").value.trim();
+  let pass = document.getElementById("password").value;
+
+  if (email !== allowedEmail || pass !== allowedPassword) {
+    alert("Invalid credentials");
+    return;
+  }
+
+  firebase.auth().signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      loginForm.style.display = "none";
+      dashboard.style.display = "block";
+      loadRealtimeStatus();
+      startStatusTimer(); // Start the timer on successful login
+    })
+    .catch(err => alert(err.message));
+};
+
+// Realtime load
+function loadRealtimeStatus() {
+  const db = firebase.database();
+
+  db.ref("/status/power").on("value", s => {
+    const powerValue = s.val();
+    console.log("Received power status:", powerValue, "Type:", typeof powerValue); // Debug
+    const isPowerOn = !!powerValue;
+    document.getElementById("powerState").innerText = isPowerOn ? "ON" : "OFF";
+    document.getElementById("powerSwitch").checked = isPowerOn;
+  });
+
+  db.ref("/status/mode").on("value", s => {
+    const modeValue = s.val();
+    console.log("Received mode status:", modeValue, "Type:", typeof modeValue); // Debug
+    const isAuto = modeValue == 0; // Use '==' to handle both "0" and 0
+    document.getElementById("modeState").innerText = isAuto ? "Auto" : "Manual";
+    document.getElementById("modeSwitch").checked = isAuto;
+  });
+
+  db.ref("/status/level").on("value", s => {
+    document.getElementById("levelState").innerText = s.val();
+  });
+
+  db.ref("/status/temperature").on("value", s => {
+    document.getElementById("tempState").innerText = s.val() + " °C";
+  });
+
+  db.ref("/status/ack_code").on("value", s => {
+    document.getElementById("ackCode").innerText = s.val();
+  });
+
+  db.ref("/status/error_code").on("value", s => {
+    document.getElementById("errCode").innerText = s.val();
+  });
+}
+
+// Send commands
+function sendCmd(cmd, value, isAutoRequest = false) {
+  firebase.database().ref("/cmd").set({
+    cmd: cmd,
+    val: value
+  });
+
+  // Reset the timer on manual user actions, but not for auto status requests
+  if (!isAutoRequest) {
+    startStatusTimer();
+  }
+}
+
+// Buttons
+document.getElementById("powerSwitch").onchange = (e) => {
+  const value = e.target.checked ? 1 : 0;
+  sendCmd("power", value);
+};
+document.getElementById("applyLevelBtn").onclick = () => {
+  let lvl = parseInt(document.getElementById("levelSelect").value);
+  sendCmd("level", lvl);
+};
+document.getElementById("modeSwitch").onchange = (e) => {
+  const value = e.target.checked ? 0 : 1; // Checked = Auto (0), Unchecked = Manual (1)
+  sendCmd("mode", value);
+};
+document.getElementById("reqStatusBtn").onclick = () => sendCmd("req_status", 0);
+document.getElementById("logoutBtn").onclick = () => {
+  stopStatusTimer(); // Stop the timer on logout
+  firebase.auth().signOut();
+};
+
+</script>
+</body>
+</html>
